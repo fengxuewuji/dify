@@ -1,7 +1,7 @@
 import type { Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 import type { FileUploadConfigResponse } from '@/models/common'
 
-export interface EnabledOrDisabled {
+export type EnabledOrDisabled = {
   enabled?: boolean
 }
 
@@ -35,6 +35,22 @@ export type FileUpload = {
     number_limits?: number
     transfer_methods?: TransferMethod[]
   }
+  document?: EnabledOrDisabled & {
+    number_limits?: number
+    transfer_methods?: TransferMethod[]
+  }
+  audio?: EnabledOrDisabled & {
+    number_limits?: number
+    transfer_methods?: TransferMethod[]
+  }
+  video?: EnabledOrDisabled & {
+    number_limits?: number
+    transfer_methods?: TransferMethod[]
+  }
+  custom?: EnabledOrDisabled & {
+    number_limits?: number
+    transfer_methods?: TransferMethod[]
+  }
   allowed_file_types?: string[]
   allowed_file_extensions?: string[]
   allowed_file_upload_methods?: TransferMethod[]
@@ -42,7 +58,7 @@ export type FileUpload = {
   fileUploadConfig?: FileUploadConfigResponse
 } & EnabledOrDisabled
 
-export interface AnnotationReplyConfig {
+export type AnnotationReplyConfig = {
   enabled: boolean
   id?: string
   score_threshold?: number
@@ -64,7 +80,7 @@ export enum FeatureEnum {
   annotationReply = 'annotationReply',
 }
 
-export interface Features {
+export type Features = {
   [FeatureEnum.moreLikeThis]?: MoreLikeThis
   [FeatureEnum.opening]?: OpeningStatement
   [FeatureEnum.suggested]?: SuggestedQuestionsAfterAnswer

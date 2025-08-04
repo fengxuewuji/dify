@@ -4,7 +4,7 @@ import { useContext } from 'use-context-selector'
 import type { Collection, Tool } from '../types'
 import cn from '@/utils/classnames'
 import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
+import { getLanguage } from '@/i18n-config/language'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
 
 type Props = {
@@ -29,11 +29,11 @@ const ToolItem = ({
   return (
     <>
       <div
-        className={cn('mb-2 px-4 py-3 bg-components-panel-item-bg rounded-xl border-[0.5px] border-components-panel-border-subtle shadow-xs cursor-pointer hover:bg-components-panel-on-panel-item-bg-hover', disabled && 'opacity-50 !cursor-not-allowed')}
+        className={cn('bg-components-panel-item-bg cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover', disabled && '!cursor-not-allowed opacity-50')}
         onClick={() => !disabled && setShowDetail(true)}
       >
-        <div className='pb-0.5 text-text-secondary system-md-semibold'>{tool.label[language]}</div>
-        <div className='text-text-tertiary system-xs-regular line-clamp-2' title={tool.description[language]}>{tool.description[language]}</div>
+        <div className='system-md-semibold pb-0.5 text-text-secondary'>{tool.label[language]}</div>
+        <div className='system-xs-regular line-clamp-2 text-text-tertiary' title={tool.description[language]}>{tool.description[language]}</div>
       </div>
       {showDetail && (
         <SettingBuiltInTool

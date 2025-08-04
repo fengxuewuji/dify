@@ -2,11 +2,12 @@ import type {
   Edge as ReactFlowEdge,
   Node as ReactFlowNode,
   Viewport,
+  XYPosition,
 } from 'reactflow'
 import type { Resolution, TransferMethod } from '@/types/app'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import type { FileResponse, NodeTracing } from '@/types/workflow'
+import type { FileResponse, NodeTracing, PanelProps } from '@/types/workflow'
 import type { Collection, Tool } from '@/app/components/tools/types'
 import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import type {
@@ -14,6 +15,8 @@ import type {
   ErrorHandleTypeEnum,
 } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
+import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
+import type { PluginMeta } from '../plugins/types'
 
 export enum BlockEnum {
   Start = 'start',
@@ -36,6 +39,9 @@ export enum BlockEnum {
   IterationStart = 'iteration-start',
   Assigner = 'assigner', // is now named as VariableAssigner
   Agent = 'agent',
+  Loop = 'loop',
+  LoopStart = 'loop-start',
+  LoopEnd = 'loop-end',
 }
 
 export enum ControlMode {
@@ -62,7 +68,7 @@ export type CommonNodeType<T = {}> = {
   _singleRunningStatus?: NodeRunningStatus
   _isCandidate?: boolean
   _isBundled?: boolean
-  _children?: string[]
+  _children?: { nodeId: string; nodeType: BlockEnum }[]
   _isEntering?: boolean
   _showAddVariablePopup?: boolean
   _holdAddVariablePopup?: boolean
@@ -79,9 +85,15 @@ export type CommonNodeType<T = {}> = {
   type: BlockEnum
   width?: number
   height?: number
+  position?: XYPosition
+  _loopLength?: number
+  _loopIndex?: number
+  isInLoop?: boolean
+  loop_id?: string
   error_strategy?: ErrorHandleTypeEnum
   retry_config?: WorkflowRetryConfig
   default_value?: DefaultValueForm[]
+  credential_id?: string
 } & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
 
 export type CommonEdgeType = {
@@ -94,6 +106,8 @@ export type CommonEdgeType = {
   _waitingRun?: boolean
   isInIteration?: boolean
   iteration_id?: string
+  isInLoop?: boolean
+  loop_id?: string
   sourceType: BlockEnum
   targetType: BlockEnum
 }
@@ -104,6 +118,7 @@ export type NodeProps<T = unknown> = { id: string; data: CommonNodeType<T> }
 export type NodePanelProps<T> = {
   id: string
   data: CommonNodeType<T>
+  panelProps: PanelProps
 }
 export type Edge = ReactFlowEdge<CommonEdgeType>
 
@@ -123,6 +138,7 @@ export type Variable = {
     variable: string
   }
   value_selector: ValueSelector
+  value_type?: VarType
   variable_type?: VarKindType
   value?: string
   options?: string[]
@@ -135,6 +151,7 @@ export type EnvironmentVariable = {
   name: string
   value: any
   value_type: 'string' | 'number' | 'secret'
+  description: string
 }
 
 export type ConversationVariable = {
@@ -168,6 +185,7 @@ export enum InputVarType {
   iterator = 'iterator', // iteration input
   singleFile = 'file',
   multiFiles = 'file-list',
+  loop = 'loop', // loop input
 }
 
 export type InputVar = {
@@ -185,6 +203,9 @@ export type InputVar = {
   hint?: string
   options?: string[]
   value_selector?: ValueSelector
+  getVarValueFromDependent?: boolean
+  hide?: boolean
+  isFileItem?: boolean
 } & Partial<UploadFileSetting>
 
 export type ModelConfig = {
@@ -245,18 +266,26 @@ export enum VarType {
   arrayObject = 'array[object]',
   arrayFile = 'array[file]',
   any = 'any',
+  arrayAny = 'array[any]',
+}
+
+export enum ValueType {
+  variable = 'variable',
+  constant = 'constant',
 }
 
 export type Var = {
   variable: string
   type: VarType
-  children?: Var[] // if type is obj, has the children struct
+  children?: Var[] | StructuredOutput // if type is obj, has the children struct
   isParagraph?: boolean
   isSelect?: boolean
   options?: string[]
   required?: boolean
   des?: string
   isException?: boolean
+  isLoopVariable?: boolean
+  nodeId?: string
 }
 
 export type NodeOutPutVar = {
@@ -264,6 +293,7 @@ export type NodeOutPutVar = {
   title: string
   vars: Var[]
   isStartNode?: boolean
+  isLoop?: boolean
 }
 
 export type Block = {
@@ -275,6 +305,7 @@ export type Block = {
 
 export type NodeDefault<T> = {
   defaultValue: Partial<T>
+  defaultRunInputData?: Record<string, any>
   getAvailablePrevNodes: (isChatMode: boolean) => BlockEnum[]
   getAvailableNextNodes: (isChatMode: boolean) => BlockEnum[]
   checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean; errorMessage?: string }
@@ -303,6 +334,7 @@ export enum NodeRunningStatus {
   Failed = 'failed',
   Exception = 'exception',
   Retry = 'retry',
+  Stopped = 'stopped',
 }
 
 export type OnNodeAdd = (
@@ -330,6 +362,7 @@ export type RunFile = {
   transfer_method: TransferMethod[]
   url?: string
   upload_file_id?: string
+  related_id?: string
 }
 
 export type WorkflowRunningData = {
@@ -337,7 +370,6 @@ export type WorkflowRunningData = {
   message_id?: string
   conversation_id?: string
   result: {
-    sequence_number?: number
     workflow_id?: string
     inputs?: string
     process_data?: string
@@ -360,9 +392,9 @@ export type WorkflowRunningData = {
 
 export type HistoryWorkflowData = {
   id: string
-  sequence_number: number
   status: string
   conversation_id?: string
+  finished_at?: number
 }
 
 export enum ChangeType {
@@ -380,6 +412,7 @@ export type MoreInfo = {
 
 export type ToolWithProvider = Collection & {
   tools: Tool[]
+  meta: PluginMeta
 }
 
 export enum SupportUploadFileTypes {
@@ -401,4 +434,20 @@ export type UploadFileSetting = {
 export type VisionSetting = {
   variable_selector: ValueSelector
   detail: Resolution
+}
+
+export enum WorkflowVersionFilterOptions {
+  all = 'all',
+  onlyYours = 'onlyYours',
+}
+
+export enum VersionHistoryContextMenuOptions {
+  restore = 'restore',
+  edit = 'edit',
+  delete = 'delete',
+  copyId = 'copyId',
+}
+
+export type ChildNodeTypeCount = {
+  [key: string]: number;
 }

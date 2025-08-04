@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
+import { basePath } from '@/utils/var'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { usePathname } from 'next/navigation'
@@ -77,6 +78,11 @@ import {
   correctToolProvider,
 } from '@/utils'
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
+import { supportFunctionCall } from '@/utils/tool-call'
+import { MittProvider } from '@/context/mitt-context'
+import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
+import Toast from '@/app/components/base/toast'
+import { useAppContext } from '@/context/app-context'
 
 type PublishConfig = {
   modelConfig: ModelConfig
@@ -86,6 +92,8 @@ type PublishConfig = {
 const Configuration: FC = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
+  const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
+
   const { appDetail, showAppConfigureFeaturesModal, setAppSiderbarExpand, setShowAppConfigureFeaturesModal } = useAppStore(useShallow(state => ({
     appDetail: state.appDetail,
     setAppSiderbarExpand: state.setAppSiderbarExpand,
@@ -94,7 +102,7 @@ const Configuration: FC = () => {
   })))
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
 
-  const latestPublishedAt = useMemo(() => appDetail?.model_config.updated_at, [appDetail])
+  const latestPublishedAt = useMemo(() => appDetail?.model_config?.updated_at, [appDetail])
   const [formattingChanged, setFormattingChanged] = useState(false)
   const { setShowAccountSettingModal } = useModalContext()
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
@@ -191,16 +199,12 @@ const Configuration: FC = () => {
     dataSets: [],
     agentConfig: DEFAULT_AGENT_SETTING,
   })
-
   const isAgent = mode === 'agent-chat'
 
   const isOpenAI = modelConfig.provider === 'langgenius/openai/openai'
 
   const [collectionList, setCollectionList] = useState<Collection[]>([])
-  useEffect(() => {
-
-  }, [])
-  const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>({
+  const [datasetConfigs, doSetDatasetConfigs] = useState<DatasetConfigs>({
     retrieval_model: RETRIEVE_TYPE.multiWay,
     reranking_model: {
       reranking_provider_name: '',
@@ -213,6 +217,11 @@ const Configuration: FC = () => {
       datasets: [],
     },
   })
+  const datasetConfigsRef = useRef(datasetConfigs)
+  const setDatasetConfigs = useCallback((newDatasetConfigs: DatasetConfigs) => {
+    doSetDatasetConfigs(newDatasetConfigs)
+    datasetConfigsRef.current = newDatasetConfigs
+  }, [])
 
   const setModelConfig = (newModelConfig: ModelConfig) => {
     doSetModelConfig(newModelConfig)
@@ -225,7 +234,7 @@ const Configuration: FC = () => {
   }, [modelModeType])
 
   const [dataSets, setDataSets] = useState<DataSet[]>([])
-  const contextVar = modelConfig.configs.prompt_variables.find((item: any) => item.is_context_var)?.key
+  const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
   const hasSetContextVar = !!contextVar
   const [isShowSelectDataSet, { setTrue: showSelectDataSet, setFalse: hideSelectDataSet }] = useBoolean(false)
   const selectedIds = dataSets.map(item => item.id)
@@ -243,7 +252,7 @@ const Configuration: FC = () => {
     formattingChangedDispatcher()
     let newDatasets = data
     if (data.find(item => !item.name)) { // has not loaded selected dataset
-      const newSelected = produce(data, (draft: any) => {
+      const newSelected = produce(data, (draft) => {
         data.forEach((item, index) => {
           if (!item.name) { // not fetched database
             const newItem = dataSets.find(i => i.id === item.id)
@@ -292,6 +301,7 @@ const Configuration: FC = () => {
     })
 
     setDatasetConfigs({
+      ...datasetConfigsRef.current,
       ...retrievalConfig,
       reranking_model: {
         reranking_provider_name: retrievalConfig?.reranking_model?.provider || '',
@@ -342,12 +352,7 @@ const Configuration: FC = () => {
     },
   )
 
-  const isFunctionCall = (() => {
-    const features = currModel?.features
-    if (!features)
-      return false
-    return features.includes(ModelFeatureEnum.toolCall) || features.includes(ModelFeatureEnum.multiToolCall)
-  })()
+  const isFunctionCall = supportFunctionCall(currModel?.features)
 
   // Fill old app data missing model mode.
   useEffect(() => {
@@ -453,11 +458,26 @@ const Configuration: FC = () => {
       ...visionConfig,
       enabled: supportVision,
     }, true)
-    setCompletionParams({})
+
+    try {
+      const { params: filtered, removedDetails } = await fetchAndMergeValidCompletionParams(
+        provider,
+        modelId,
+        completionParams,
+      )
+      if (Object.keys(removedDetails).length)
+        Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ${Object.entries(removedDetails).map(([k, reason]) => `${k} (${reason})`).join(', ')}` })
+      setCompletionParams(filtered)
+    }
+    catch (e) {
+      Toast.notify({ type: 'error', message: t('common.error') })
+      setCompletionParams({})
+    }
   }
 
   const isShowVisionConfig = !!currModel?.features?.includes(ModelFeatureEnum.vision)
   const isShowDocumentConfig = !!currModel?.features?.includes(ModelFeatureEnum.document)
+  const isShowAudioConfig = !!currModel?.features?.includes(ModelFeatureEnum.audio)
   const isAllowVideoUpload = !!currModel?.features?.includes(ModelFeatureEnum.video)
   // *** web app features ***
   const featuresData: FeaturesData = useMemo(() => {
@@ -505,6 +525,12 @@ const Configuration: FC = () => {
   useEffect(() => {
     (async () => {
       const collectionList = await fetchCollectionList()
+      if (basePath) {
+        collectionList.forEach((item) => {
+          if (typeof item.icon == 'string' && !item.icon.includes(basePath))
+            item.icon = `${basePath}${item.icon}`
+        })
+      }
       setCollectionList(collectionList)
       fetchAppDetail({ url: '/apps', id: appId }).then(async (res: any) => {
         setMode(res.mode)
@@ -515,7 +541,7 @@ const Configuration: FC = () => {
           if (modelConfig.chat_prompt_config && modelConfig.chat_prompt_config.prompt.length > 0)
             setChatPromptConfig(modelConfig.chat_prompt_config)
           else
-            setChatPromptConfig(clone(DEFAULT_CHAT_PROMPT_CONFIG) as any)
+            setChatPromptConfig(clone(DEFAULT_CHAT_PROMPT_CONFIG))
           setCompletionPromptConfig(modelConfig.completion_prompt_config || clone(DEFAULT_COMPLETION_PROMPT_CONFIG) as any)
           setCanReturnToSimpleMode(false)
         }
@@ -625,13 +651,14 @@ const Configuration: FC = () => {
               tools: modelConfig.agent_mode?.tools.filter((tool: any) => {
                 return !tool.dataset
               }).map((tool: any) => {
+                const toolInCollectionList = collectionList.find(c => tool.provider_id === c.id)
                 return {
                   ...tool,
                   isDeleted: res.deleted_tools?.some((deletedTool: any) => deletedTool.id === tool.id && deletedTool.tool_name === tool.tool_name),
-                  notAuthor: collectionList.find(c => tool.provider_id === c.id)?.is_team_authorization === false,
+                  notAuthor: toolInCollectionList?.is_team_authorization === false,
                   ...(tool.provider_type === 'builtin' ? {
-                    provider_id: correctToolProvider(tool.provider_name),
-                    provider_name: correctToolProvider(tool.provider_name),
+                    provider_id: correctToolProvider(tool.provider_name, !!toolInCollectionList),
+                    provider_name: correctToolProvider(tool.provider_name, !!toolInCollectionList),
                   } : {}),
                 }
               }),
@@ -645,7 +672,13 @@ const Configuration: FC = () => {
 
         syncToPublishedConfig(config)
         setPublishedConfig(config)
-        const retrievalConfig = getMultipleRetrievalConfig(modelConfig.dataset_configs, datasets, datasets, {
+        const retrievalConfig = getMultipleRetrievalConfig({
+          ...modelConfig.dataset_configs,
+          reranking_model: modelConfig.dataset_configs.reranking_model && {
+            provider: modelConfig.dataset_configs.reranking_model.reranking_provider_name,
+            model: modelConfig.dataset_configs.reranking_model.reranking_model_name,
+          },
+        }, datasets, datasets, {
           provider: currentRerankProvider?.provider,
           model: currentRerankModel?.model,
         })
@@ -655,15 +688,14 @@ const Configuration: FC = () => {
           ...retrievalConfig,
           ...(retrievalConfig.reranking_model ? {
             reranking_model: {
-              ...retrievalConfig.reranking_model,
-              reranking_provider_name: correctModelProvider(modelConfig.dataset_configs.reranking_model.reranking_provider_name),
+              reranking_model_name: retrievalConfig.reranking_model.model,
+              reranking_provider_name: correctModelProvider(retrievalConfig.reranking_model.provider),
             },
           } : {}),
         })
         setHasFetchedDetail(true)
       })
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appId])
 
   const promptEmpty = (() => {
@@ -813,8 +845,8 @@ const Configuration: FC = () => {
     setAppSiderbarExpand('collapse')
   }
 
-  if (isLoading) {
-    return <div className='flex items-center justify-center h-full'>
+  if (isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
+    return <div className='flex h-full items-center justify-center'>
       <Loading type='area' />
     </div>
   }
@@ -883,6 +915,7 @@ const Configuration: FC = () => {
       dataSets,
       setDataSets,
       datasetConfigs,
+      datasetConfigsRef,
       setDatasetConfigs,
       hasSetContextVar,
       isShowVisionConfig,
@@ -890,22 +923,23 @@ const Configuration: FC = () => {
       setVisionConfig: handleSetVisionConfig,
       isAllowVideoUpload,
       isShowDocumentConfig,
+      isShowAudioConfig,
       rerankSettingModalOpen,
       setRerankSettingModalOpen,
     }}
     >
       <FeaturesProvider features={featuresData}>
-        <>
-          <div className="flex flex-col h-full">
-            <div className='relative flex grow h-[200px] pt-14'>
+        <MittProvider>
+          <div className="flex h-full flex-col">
+            <div className='relative flex h-[200px] grow pt-14'>
               {/* Header */}
-              <div className='absolute top-0 left-0 w-full bg-default-subtle h-14'>
-                <div className='flex items-center justify-between px-6 h-14'>
+              <div className='bg-default-subtle absolute left-0 top-0 h-14 w-full'>
+                <div className='flex h-14 items-center justify-between px-6'>
                   <div className='flex items-center'>
                     <div className='system-xl-semibold text-text-primary'>{t('appDebug.orchestrate')}</div>
-                    <div className='flex items-center h-[14px] space-x-1 text-xs'>
+                    <div className='flex h-[14px] items-center space-x-1 text-xs'>
                       {isAdvancedMode && (
-                        <div className='ml-1 flex items-center h-5 px-1.5 border border-components-button-secondary-border rounded-md system-xs-medium-uppercase text-text-tertiary uppercase'>{t('appDebug.promptMode.advanced')}</div>
+                        <div className='system-xs-medium-uppercase ml-1 flex h-5 items-center rounded-md border border-components-button-secondary-border px-1.5 uppercase text-text-tertiary'>{t('appDebug.promptMode.advanced')}</div>
                       )}
                     </div>
                   </div>
@@ -947,7 +981,7 @@ const Configuration: FC = () => {
                     {isMobile && (
                       <Button className='mr-2 !h-8 !text-[13px] font-medium' onClick={showDebugPanel}>
                         <span className='mr-1'>{t('appDebug.operation.debugConfig')}</span>
-                        <CodeBracketIcon className="w-4 h-4 text-text-tertiary" />
+                        <CodeBracketIcon className="h-4 w-4 text-text-tertiary" />
                       </Button>
                     )}
                     <AppPublisher {...{
@@ -962,11 +996,11 @@ const Configuration: FC = () => {
                   </div>
                 </div>
               </div>
-              <div className={`w-full sm:w-1/2 shrink-0 flex flex-col h-full ${debugWithMultipleModel && 'max-w-[560px]'}`}>
+              <div className={`flex h-full w-full shrink-0 flex-col sm:w-1/2 ${debugWithMultipleModel && 'max-w-[560px]'}`}>
                 <Config />
               </div>
-              {!isMobile && <div className="relative flex flex-col w-1/2 h-full overflow-y-auto grow " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
-                <div className='grow flex flex-col border-t-[0.5px] border-l-[0.5px] rounded-tl-2xl border-components-panel-border bg-chatbot-bg '>
+              {!isMobile && <div className="relative flex h-full w-1/2 grow flex-col overflow-y-auto " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
+                <div className='flex grow flex-col rounded-tl-2xl border-l-[0.5px] border-t-[0.5px] border-components-panel-border bg-chatbot-bg '>
                   <Debug
                     isAPIKeySet={isAPIKeySet}
                     onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
@@ -1047,7 +1081,7 @@ const Configuration: FC = () => {
             />
           )}
           <PluginDependency />
-        </>
+        </MittProvider>
       </FeaturesProvider>
     </ConfigContext.Provider>
   )

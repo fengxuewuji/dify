@@ -1,5 +1,6 @@
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../types'
 import type { GitHubUrlInfo } from '@/app/components/plugins/types'
+import { isEmpty } from 'lodash-es'
 
 export const pluginManifestToCardPluginProps = (pluginManifest: PluginDeclaration): Plugin => {
   return {
@@ -38,7 +39,7 @@ export const pluginManifestInMarketToPluginProps = (pluginManifest: PluginManife
     label: pluginManifest.label,
     brief: pluginManifest.brief,
     icon: pluginManifest.icon,
-    verified: pluginManifest.verified,
+    verified: true,
     introduction: pluginManifest.introduction,
     repository: '',
     install_count: 0,
@@ -46,6 +47,8 @@ export const pluginManifestInMarketToPluginProps = (pluginManifest: PluginManife
       settings: [],
     },
     tags: [],
+    badges: pluginManifest.badges,
+    verification: isEmpty(pluginManifest.verification) ? { authorized_category: 'langgenius' } : pluginManifest.verification,
   }
 }
 

@@ -15,6 +15,7 @@ import type {
 import { useVersionListOfPlugin } from '@/service/use-plugins'
 import useTimestamp from '@/hooks/use-timestamp'
 import cn from '@/utils/classnames'
+import { lt } from 'semver'
 
 type Props = {
   disabled?: boolean
@@ -28,9 +29,11 @@ type Props = {
   onSelect: ({
     version,
     unique_identifier,
+    isDowngrade,
   }: {
     version: string
     unique_identifier: string
+    isDowngrade: boolean
   }) => void
 }
 
@@ -59,13 +62,14 @@ const PluginVersionPicker: FC<Props> = ({
 
   const { data: res } = useVersionListOfPlugin(pluginID)
 
-  const handleSelect = useCallback(({ version, unique_identifier }: {
+  const handleSelect = useCallback(({ version, unique_identifier, isDowngrade }: {
     version: string
     unique_identifier: string
+    isDowngrade: boolean
   }) => {
     if (currentVersion === version)
       return
-    onSelect({ version, unique_identifier })
+    onSelect({ version, unique_identifier, isDowngrade })
     onShowChange(false)
   }, [currentVersion, onSelect, onShowChange])
 
@@ -77,15 +81,15 @@ const PluginVersionPicker: FC<Props> = ({
       onOpenChange={onShowChange}
     >
       <PortalToFollowElemTrigger
-        className={cn('inline-flex items-center cursor-pointer', disabled && 'cursor-default')}
+        className={cn('inline-flex cursor-pointer items-center', disabled && 'cursor-default')}
         onClick={handleTriggerClick}
       >
         {trigger}
       </PortalToFollowElemTrigger>
 
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className="relative w-[209px] p-1 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg">
-          <div className='px-3 pt-1 pb-0.5 text-text-tertiary system-xs-medium-uppercase'>
+        <div className="relative w-[209px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
+          <div className='system-xs-medium-uppercase px-3 pb-0.5 pt-1 text-text-tertiary'>
             {t('plugin.detailPanel.switchVersion')}
           </div>
           <div className='relative'>
@@ -93,19 +97,20 @@ const PluginVersionPicker: FC<Props> = ({
               <div
                 key={version.unique_identifier}
                 className={cn(
-                  'h-7 px-3 py-1 flex items-center gap-1 rounded-lg hover:bg-state-base-hover cursor-pointer',
-                  currentVersion === version.version && 'opacity-30 cursor-default hover:bg-transparent',
+                  'flex h-7 cursor-pointer items-center gap-1 rounded-lg px-3 py-1 hover:bg-state-base-hover',
+                  currentVersion === version.version && 'cursor-default opacity-30 hover:bg-transparent',
                 )}
                 onClick={() => handleSelect({
                   version: version.version,
                   unique_identifier: version.unique_identifier,
+                  isDowngrade: lt(version.version, currentVersion),
                 })}
               >
-                <div className='grow flex items-center'>
-                  <div className='text-text-secondary system-sm-medium'>{version.version}</div>
+                <div className='flex grow items-center'>
+                  <div className='system-sm-medium text-text-secondary'>{version.version}</div>
                   {currentVersion === version.version && <Badge className='ml-1' text='CURRENT'/>}
                 </div>
-                <div className='shrink-0 text-text-tertiary system-xs-regular'>{formatDate(version.created_at, format)}</div>
+                <div className='system-xs-regular shrink-0 text-text-tertiary'>{formatDate(version.created_at, format)}</div>
               </div>
             ))}
           </div>

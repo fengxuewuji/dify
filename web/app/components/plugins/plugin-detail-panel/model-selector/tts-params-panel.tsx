@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { languages } from '@/i18n/language'
+import { languages } from '@/i18n-config/language'
 import { PortalSelect } from '@/app/components/base/select'
 import cn from '@/utils/classnames'
 
@@ -35,7 +35,7 @@ const TTSParamsPanel = ({
   return (
     <>
       <div className='mb-3'>
-        <div className='mb-1 py-1 flex items-center text-text-secondary system-sm-semibold'>
+        <div className='system-sm-semibold mb-1 flex items-center py-1 text-text-secondary'>
           {t('appDebug.voice.voiceSettings.language')}
         </div>
         <PortalSelect
@@ -48,7 +48,7 @@ const TTSParamsPanel = ({
         />
       </div>
       <div className='mb-3'>
-        <div className='mb-1 py-1 flex items-center text-text-secondary system-sm-semibold'>
+        <div className='system-sm-semibold mb-1 flex items-center py-1 text-text-secondary'>
           {t('appDebug.voice.voiceSettings.voice')}
         </div>
         <PortalSelect

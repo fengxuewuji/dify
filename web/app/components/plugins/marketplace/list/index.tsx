@@ -13,7 +13,7 @@ type ListProps = {
   showInstallButton?: boolean
   locale: string
   cardContainerClassName?: string
-  cardRender?: (plugin: Plugin) => JSX.Element | null
+  cardRender?: (plugin: Plugin) => React.JSX.Element | null
   onMoreClick?: () => void
   emptyClassName?: string
 }
@@ -56,7 +56,7 @@ const List = ({
 
                 return (
                   <CardWrapper
-                    key={plugin.name}
+                    key={`${plugin.org}/${plugin.name}`}
                     plugin={plugin}
                     showInstallButton={showInstallButton}
                     locale={locale}

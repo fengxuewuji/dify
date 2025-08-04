@@ -3,13 +3,13 @@
 import { useSelectedLayoutSegment } from 'next/navigation'
 import Link from 'next/link'
 import classNames from '@/utils/classnames'
+import type { RemixiconComponentType } from '@remixicon/react'
 
 export type NavIcon = React.ComponentType<
 React.PropsWithoutRef<React.ComponentProps<'svg'>> & {
   title?: string | undefined
   titleId?: string | undefined
-}
->
+}> | RemixiconComponentType
 
 export type NavLinkProps = {
   name: string
@@ -44,20 +44,29 @@ export default function NavLink({
       key={name}
       href={href}
       className={classNames(
-        isActive ? 'bg-state-accent-active text-text-accent font-semibold' : 'text-components-menu-item-text hover:bg-gray-100 hover:text-components-menu-item-text-hover',
-        'group flex items-center h-9 rounded-md py-2 text-sm font-normal',
+        isActive ? 'bg-state-accent-active font-semibold text-text-accent' : 'text-components-menu-item-text hover:bg-state-base-hover hover:text-components-menu-item-text-hover',
+        'group flex h-9 items-center rounded-md py-2 text-sm font-normal',
         mode === 'expand' ? 'px-3' : 'px-2.5',
       )}
       title={mode === 'collapse' ? name : ''}
     >
       <NavIcon
         className={classNames(
-          'h-4 w-4 flex-shrink-0',
+          'h-4 w-4 shrink-0',
           mode === 'expand' ? 'mr-2' : 'mr-0',
         )}
         aria-hidden="true"
       />
-      {mode === 'expand' && name}
+      <span
+        className={classNames(
+          'whitespace-nowrap transition-all duration-200 ease-in-out',
+          mode === 'expand'
+            ? 'w-auto opacity-100'
+            : 'pointer-events-none w-0 overflow-hidden opacity-0',
+        )}
+      >
+        {name}
+      </span>
     </Link>
   )
 }

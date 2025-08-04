@@ -15,7 +15,6 @@ from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
 from models.model import App, AppMode, AppModelConfig, EndUser, Message, MessageFeedback
 from services.conversation_service import ConversationService
-from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
 from services.errors.message import (
     FirstMessageNotExistsError,
     LastMessageNotExistsError,
@@ -51,7 +50,7 @@ class MessageService:
         if first_id:
             first_message = (
                 db.session.query(Message)
-                .filter(Message.conversation_id == conversation.id, Message.id == first_id)
+                .where(Message.conversation_id == conversation.id, Message.id == first_id)
                 .first()
             )
 
@@ -60,7 +59,7 @@ class MessageService:
 
             history_messages = (
                 db.session.query(Message)
-                .filter(
+                .where(
                     Message.conversation_id == conversation.id,
                     Message.created_at < first_message.created_at,
                     Message.id != first_message.id,
@@ -72,7 +71,7 @@ class MessageService:
         else:
             history_messages = (
                 db.session.query(Message)
-                .filter(Message.conversation_id == conversation.id)
+                .where(Message.conversation_id == conversation.id)
                 .order_by(Message.created_at.desc())
                 .limit(fetch_limit)
                 .all()
@@ -110,19 +109,20 @@ class MessageService:
                 app_model=app_model, user=user, conversation_id=conversation_id
             )
 
-            base_query = base_query.filter(Message.conversation_id == conversation.id)
+            base_query = base_query.where(Message.conversation_id == conversation.id)
 
-        if include_ids is not None:
-            base_query = base_query.filter(Message.id.in_(include_ids))
+        # Check if include_ids is not None and not empty to avoid WHERE false condition
+        if include_ids is not None and len(include_ids) > 0:
+            base_query = base_query.where(Message.id.in_(include_ids))
 
         if last_id:
-            last_message = base_query.filter(Message.id == last_id).first()
+            last_message = base_query.where(Message.id == last_id).first()
 
             if not last_message:
                 raise LastMessageNotExistsError()
 
             history_messages = (
-                base_query.filter(Message.created_at < last_message.created_at, Message.id != last_message.id)
+                base_query.where(Message.created_at < last_message.created_at, Message.id != last_message.id)
                 .order_by(Message.created_at.desc())
                 .limit(fetch_limit)
                 .all()
@@ -179,10 +179,25 @@ class MessageService:
         return feedback
 
     @classmethod
+    def get_all_messages_feedbacks(cls, app_model: App, page: int, limit: int):
+        """Get all feedbacks of an app"""
+        offset = (page - 1) * limit
+        feedbacks = (
+            db.session.query(MessageFeedback)
+            .where(MessageFeedback.app_id == app_model.id)
+            .order_by(MessageFeedback.created_at.desc(), MessageFeedback.id.desc())
+            .limit(limit)
+            .offset(offset)
+            .all()
+        )
+
+        return [record.to_dict() for record in feedbacks]
+
+    @classmethod
     def get_message(cls, app_model: App, user: Optional[Union[Account, EndUser]], message_id: str):
         message = (
             db.session.query(Message)
-            .filter(
+            .where(
                 Message.id == message_id,
                 Message.app_id == app_model.id,
                 Message.from_source == ("api" if isinstance(user, EndUser) else "console"),
@@ -210,12 +225,6 @@ class MessageService:
             app_model=app_model, conversation_id=message.conversation_id, user=user
         )
 
-        if not conversation:
-            raise ConversationNotExistsError()
-
-        if conversation.status != "normal":
-            raise ConversationCompletedError()
-
         model_manager = ModelManager()
 
         if app_model.mode == AppMode.ADVANCED_CHAT.value:
@@ -240,9 +249,7 @@ class MessageService:
             if not conversation.override_model_configs:
                 app_model_config = (
                     db.session.query(AppModelConfig)
-                    .filter(
-                        AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id
-                    )
+                    .where(AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id)
                     .first()
                 )
             else:

@@ -6,7 +6,7 @@ import {
   RiClipboardLine,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { ClipboardCheck } from '../../base/icons/src/vender/line/files'
+import { CopyCheck } from '../../base/icons/src/vender/line/files'
 import Tooltip from '../../base/tooltip'
 import cn from '@/utils/classnames'
 import ActionButton from '@/app/components/base/action-button'
@@ -44,18 +44,18 @@ const KeyValueItem: FC<Props> = ({
     }
   }, [isCopied])
 
-  const CopyIcon = isCopied ? ClipboardCheck : RiClipboardLine
+  const CopyIcon = isCopied ? CopyCheck : RiClipboardLine
 
   return (
     <div className='flex items-center gap-1'>
-      <span className={cn('flex flex-col justify-center items-start text-text-tertiary system-xs-medium', labelWidthClassName)}>{label}</span>
-      <div className='flex justify-center items-center gap-0.5'>
-        <span className={cn(valueMaxWidthClassName, ' truncate system-xs-medium text-text-secondary')}>
+      <span className={cn('system-xs-medium flex flex-col items-start justify-center text-text-tertiary', labelWidthClassName)}>{label}</span>
+      <div className='flex items-center justify-center gap-0.5'>
+        <span className={cn(valueMaxWidthClassName, ' system-xs-medium truncate text-text-secondary')}>
           {maskedValue || value}
         </span>
         <Tooltip popupContent={t(`common.operation.${isCopied ? 'copied' : 'copy'}`)} position='top'>
           <ActionButton onClick={handleCopy}>
-            <CopyIcon className='shrink-0 w-3.5 h-3.5 text-text-tertiary' />
+            <CopyIcon className='h-3.5 w-3.5 shrink-0 text-text-tertiary' />
           </ActionButton>
         </Tooltip>
       </div>

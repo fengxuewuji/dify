@@ -1,9 +1,10 @@
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.entities.node_entities import AgentNodeStrategyInit
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
 from core.workflow.nodes import NodeType
@@ -63,6 +64,10 @@ class BaseNodeEvent(GraphEngineEvent):
     """parent parallel start node id if node is in parallel"""
     in_iteration_id: Optional[str] = None
     """iteration id if node is in iteration"""
+    in_loop_id: Optional[str] = None
+    """loop id if node is in loop"""
+    # The version of the node, or "1" if not specified.
+    node_version: str = "1"
 
 
 class NodeRunStartedEvent(BaseNodeEvent):
@@ -80,7 +85,7 @@ class NodeRunStreamChunkEvent(BaseNodeEvent):
 
 
 class NodeRunRetrieverResourceEvent(BaseNodeEvent):
-    retriever_resources: list[dict] = Field(..., description="retriever resources")
+    retriever_resources: Sequence[RetrievalSourceMetadata] = Field(..., description="retriever resources")
     context: str = Field(..., description="context")
 
 
@@ -97,6 +102,10 @@ class NodeRunExceptionEvent(BaseNodeEvent):
 
 
 class NodeInIterationFailedEvent(BaseNodeEvent):
+    error: str = Field(..., description="error")
+
+
+class NodeInLoopFailedEvent(BaseNodeEvent):
     error: str = Field(..., description="error")
 
 
@@ -122,6 +131,8 @@ class BaseParallelBranchEvent(GraphEngineEvent):
     """parent parallel start node id if node is in parallel"""
     in_iteration_id: Optional[str] = None
     """iteration id if node is in iteration"""
+    in_loop_id: Optional[str] = None
+    """loop id if node is in loop"""
 
 
 class ParallelBranchRunStartedEvent(BaseParallelBranchEvent):
@@ -190,6 +201,59 @@ class IterationRunFailedEvent(BaseIterationEvent):
 
 
 ###########################################
+# Loop Events
+###########################################
+
+
+class BaseLoopEvent(GraphEngineEvent):
+    loop_id: str = Field(..., description="loop node execution id")
+    loop_node_id: str = Field(..., description="loop node id")
+    loop_node_type: NodeType = Field(..., description="node type, loop or loop")
+    loop_node_data: BaseNodeData = Field(..., description="node data")
+    parallel_id: Optional[str] = None
+    """parallel id if node is in parallel"""
+    parallel_start_node_id: Optional[str] = None
+    """parallel start node id if node is in parallel"""
+    parent_parallel_id: Optional[str] = None
+    """parent parallel id if node is in parallel"""
+    parent_parallel_start_node_id: Optional[str] = None
+    """parent parallel start node id if node is in parallel"""
+    parallel_mode_run_id: Optional[str] = None
+    """loop run in parallel mode run id"""
+
+
+class LoopRunStartedEvent(BaseLoopEvent):
+    start_at: datetime = Field(..., description="start at")
+    inputs: Optional[Mapping[str, Any]] = None
+    metadata: Optional[Mapping[str, Any]] = None
+    predecessor_node_id: Optional[str] = None
+
+
+class LoopRunNextEvent(BaseLoopEvent):
+    index: int = Field(..., description="index")
+    pre_loop_output: Optional[Any] = None
+    duration: Optional[float] = None
+
+
+class LoopRunSucceededEvent(BaseLoopEvent):
+    start_at: datetime = Field(..., description="start at")
+    inputs: Optional[Mapping[str, Any]] = None
+    outputs: Optional[Mapping[str, Any]] = None
+    metadata: Optional[Mapping[str, Any]] = None
+    steps: int = 0
+    loop_duration_map: Optional[dict[str, float]] = None
+
+
+class LoopRunFailedEvent(BaseLoopEvent):
+    start_at: datetime = Field(..., description="start at")
+    inputs: Optional[Mapping[str, Any]] = None
+    outputs: Optional[Mapping[str, Any]] = None
+    metadata: Optional[Mapping[str, Any]] = None
+    steps: int = 0
+    error: str = Field(..., description="failed reason")
+
+
+###########################################
 # Agent Events
 ###########################################
 
@@ -207,6 +271,7 @@ class AgentLogEvent(BaseAgentEvent):
     status: str = Field(..., description="status")
     data: Mapping[str, Any] = Field(..., description="data")
     metadata: Optional[Mapping[str, Any]] = Field(default=None, description="metadata")
+    node_id: str = Field(..., description="agent node id")
 
 
-InNodeEvent = BaseNodeEvent | BaseParallelBranchEvent | BaseIterationEvent | BaseAgentEvent
+InNodeEvent = BaseNodeEvent | BaseParallelBranchEvent | BaseIterationEvent | BaseAgentEvent | BaseLoopEvent

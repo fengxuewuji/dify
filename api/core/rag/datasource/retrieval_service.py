@@ -1,16 +1,16 @@
 import concurrent.futures
-import json
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 from flask import Flask, current_app
-from sqlalchemy.orm import load_only
+from sqlalchemy.orm import Session, load_only
 
 from configs import dify_config
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.embedding.retrieval import RetrievalSegments
+from core.rag.entities.metadata_entities import MetadataCondition
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
@@ -42,11 +42,12 @@ class RetrievalService:
         reranking_model: Optional[dict] = None,
         reranking_mode: str = "reranking_model",
         weights: Optional[dict] = None,
+        document_ids_filter: Optional[list[str]] = None,
     ):
         if not query:
             return []
         dataset = cls._get_dataset(dataset_id)
-        if not dataset or dataset.available_document_count == 0 or dataset.available_segment_count == 0:
+        if not dataset:
             return []
 
         all_documents: list[Document] = []
@@ -65,6 +66,7 @@ class RetrievalService:
                         top_k=top_k,
                         all_documents=all_documents,
                         exceptions=exceptions,
+                        document_ids_filter=document_ids_filter,
                     )
                 )
             if RetrievalMethod.is_support_semantic_search(retrieval_method):
@@ -80,6 +82,7 @@ class RetrievalService:
                         all_documents=all_documents,
                         retrieval_method=retrieval_method,
                         exceptions=exceptions,
+                        document_ids_filter=document_ids_filter,
                     )
                 )
             if RetrievalMethod.is_support_fulltext_search(retrieval_method):
@@ -95,6 +98,7 @@ class RetrievalService:
                         all_documents=all_documents,
                         retrieval_method=retrieval_method,
                         exceptions=exceptions,
+                        document_ids_filter=document_ids_filter,
                     )
                 )
             concurrent.futures.wait(futures, timeout=30, return_when=concurrent.futures.ALL_COMPLETED)
@@ -116,22 +120,43 @@ class RetrievalService:
         return all_documents
 
     @classmethod
-    def external_retrieve(cls, dataset_id: str, query: str, external_retrieval_model: Optional[dict] = None):
-        dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+    def external_retrieve(
+        cls,
+        dataset_id: str,
+        query: str,
+        external_retrieval_model: Optional[dict] = None,
+        metadata_filtering_conditions: Optional[dict] = None,
+    ):
+        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
         if not dataset:
             return []
+        metadata_condition = (
+            MetadataCondition(**metadata_filtering_conditions) if metadata_filtering_conditions else None
+        )
         all_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
-            dataset.tenant_id, dataset_id, query, external_retrieval_model or {}
+            dataset.tenant_id,
+            dataset_id,
+            query,
+            external_retrieval_model or {},
+            metadata_condition=metadata_condition,
         )
         return all_documents
 
     @classmethod
     def _get_dataset(cls, dataset_id: str) -> Optional[Dataset]:
-        return db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+        with Session(db.engine) as session:
+            return session.query(Dataset).where(Dataset.id == dataset_id).first()
 
     @classmethod
     def keyword_search(
-        cls, flask_app: Flask, dataset_id: str, query: str, top_k: int, all_documents: list, exceptions: list
+        cls,
+        flask_app: Flask,
+        dataset_id: str,
+        query: str,
+        top_k: int,
+        all_documents: list,
+        exceptions: list,
+        document_ids_filter: Optional[list[str]] = None,
     ):
         with flask_app.app_context():
             try:
@@ -140,7 +165,10 @@ class RetrievalService:
                     raise ValueError("dataset not found")
 
                 keyword = Keyword(dataset=dataset)
-                documents = keyword.search(cls.escape_query_for_search(query), top_k=top_k)
+
+                documents = keyword.search(
+                    cls.escape_query_for_search(query), top_k=top_k, document_ids_filter=document_ids_filter
+                )
                 all_documents.extend(documents)
             except Exception as e:
                 exceptions.append(str(e))
@@ -157,6 +185,7 @@ class RetrievalService:
         all_documents: list,
         retrieval_method: str,
         exceptions: list,
+        document_ids_filter: Optional[list[str]] = None,
     ):
         with flask_app.app_context():
             try:
@@ -171,6 +200,7 @@ class RetrievalService:
                     top_k=top_k,
                     score_threshold=score_threshold,
                     filter={"group_id": [dataset.id]},
+                    document_ids_filter=document_ids_filter,
                 )
 
                 if documents:
@@ -208,6 +238,7 @@ class RetrievalService:
         all_documents: list,
         retrieval_method: str,
         exceptions: list,
+        document_ids_filter: Optional[list[str]] = None,
     ):
         with flask_app.app_context():
             try:
@@ -217,7 +248,9 @@ class RetrievalService:
 
                 vector_processor = Vector(dataset=dataset)
 
-                documents = vector_processor.search_by_full_text(cls.escape_query_for_search(query), top_k=top_k)
+                documents = vector_processor.search_by_full_text(
+                    cls.escape_query_for_search(query), top_k=top_k, document_ids_filter=document_ids_filter
+                )
                 if documents:
                     if (
                         reranking_model
@@ -243,7 +276,7 @@ class RetrievalService:
 
     @staticmethod
     def escape_query_for_search(query: str) -> str:
-        return json.dumps(query).strip('"')
+        return query.replace('"', '\\"')
 
     @classmethod
     def format_retrieval_documents(cls, documents: list[Document]) -> list[RetrievalSegments]:
@@ -261,7 +294,7 @@ class RetrievalService:
             dataset_documents = {
                 doc.id: doc
                 for doc in db.session.query(DatasetDocument)
-                .filter(DatasetDocument.id.in_(document_ids))
+                .where(DatasetDocument.id.in_(document_ids))
                 .options(load_only(DatasetDocument.id, DatasetDocument.doc_form, DatasetDocument.dataset_id))
                 .all()
             }
@@ -277,13 +310,15 @@ class RetrievalService:
                     continue
 
                 dataset_document = dataset_documents[document_id]
+                if not dataset_document:
+                    continue
 
                 if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
                     # Handle parent-child documents
                     child_index_node_id = document.metadata.get("doc_id")
 
                     child_chunk = (
-                        db.session.query(ChildChunk).filter(ChildChunk.index_node_id == child_index_node_id).first()
+                        db.session.query(ChildChunk).where(ChildChunk.index_node_id == child_index_node_id).first()
                     )
 
                     if not child_chunk:
@@ -291,7 +326,7 @@ class RetrievalService:
 
                     segment = (
                         db.session.query(DocumentSegment)
-                        .filter(
+                        .where(
                             DocumentSegment.dataset_id == dataset_document.dataset_id,
                             DocumentSegment.enabled == True,
                             DocumentSegment.status == "completed",
@@ -346,7 +381,7 @@ class RetrievalService:
 
                     segment = (
                         db.session.query(DocumentSegment)
-                        .filter(
+                        .where(
                             DocumentSegment.dataset_id == dataset_document.dataset_id,
                             DocumentSegment.enabled == True,
                             DocumentSegment.status == "completed",
@@ -371,7 +406,29 @@ class RetrievalService:
                     record["child_chunks"] = segment_child_map[record["segment"].id].get("child_chunks")  # type: ignore
                     record["score"] = segment_child_map[record["segment"].id]["max_score"]
 
-            return [RetrievalSegments(**record) for record in records]
+            result = []
+            for record in records:
+                # Extract segment
+                segment = record["segment"]
+
+                # Extract child_chunks, ensuring it's a list or None
+                child_chunks = record.get("child_chunks")
+                if not isinstance(child_chunks, list):
+                    child_chunks = None
+
+                # Extract score, ensuring it's a float or None
+                score_value = record.get("score")
+                score = (
+                    float(score_value)
+                    if score_value is not None and isinstance(score_value, int | float | str)
+                    else None
+                )
+
+                # Create RetrievalSegments object
+                retrieval_segment = RetrievalSegments(segment=segment, child_chunks=child_chunks, score=score)
+                result.append(retrieval_segment)
+
+            return result
         except Exception as e:
             db.session.rollback()
             raise e

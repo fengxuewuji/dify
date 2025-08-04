@@ -1,7 +1,10 @@
 import type { Viewport } from 'reactflow'
-import type { BlockEnum, ConversationVariable, Edge, EnvironmentVariable, Node } from '@/app/components/workflow/types'
+import type { BlockEnum, CommonNodeType, ConversationVariable, Edge, EnvironmentVariable, InputVar, Node, ValueSelector, VarType, Variable } from '@/app/components/workflow/types'
 import type { TransferMethod } from '@/types/app'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import type { BeforeRunFormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form'
+import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
+import type { MutableRefObject } from 'react'
 
 export type AgentLogItem = {
   node_execution_id: string,
@@ -30,11 +33,12 @@ export type NodeTracing = {
   predecessor_node_id: string
   node_id: string
   iteration_id?: string
+  loop_id?: string
   node_type: BlockEnum
   title: string
   inputs: any
   process_data: any
-  outputs?: any
+  outputs?: Record<string, any>
   status: string
   parallel_run_id?: string
   error?: string
@@ -45,22 +49,28 @@ export type NodeTracing = {
     currency: string
     iteration_id?: string
     iteration_index?: number
+    loop_id?: string
+    loop_index?: number
     parallel_id?: string
     parallel_start_node_id?: string
     parent_parallel_id?: string
     parent_parallel_start_node_id?: string
     parallel_mode_run_id?: string
     iteration_duration_map?: IterationDurationMap
+    loop_duration_map?: LoopDurationMap
     error_strategy?: ErrorHandleTypeEnum
     agent_log?: AgentLogItem[]
     tool_info?: {
       agent_strategy?: string
       icon?: string
     }
+    loop_variable_map?: Record<string, any>
   }
   metadata: {
     iterator_length: number
     iterator_index: number
+    loop_length: number
+    loop_index: number
   }
   created_at: number
   created_by: {
@@ -69,10 +79,11 @@ export type NodeTracing = {
     email: string
   }
   iterDurationMap?: IterationDurationMap
+  loopDurationMap?: LoopDurationMap
   finished_at: number
   extras?: any
   expand?: boolean // for UI
-  details?: NodeTracing[][] // iteration detail
+  details?: NodeTracing[][] // iteration or loop detail
   retryDetail?: NodeTracing[] // retry detail
   retry_index?: number
   parallelDetail?: { // parallel detail. if is in parallel, this field will be set
@@ -104,13 +115,28 @@ export type FetchWorkflowDraftResponse = {
   }
   hash: string
   updated_at: number
+  updated_by: {
+    id: string
+    name: string
+    email: string
+  },
   tool_published: boolean
   environment_variables?: EnvironmentVariable[]
   conversation_variables?: ConversationVariable[]
   version: string
+  marked_name: string
+  marked_comment: string
 }
 
 export type VersionHistory = FetchWorkflowDraftResponse
+
+export type FetchWorkflowDraftPageParams = {
+  appId: string
+  initialPage: number
+  limit: number
+  userId?: string
+  namedOnly?: boolean
+}
 
 export type FetchWorkflowDraftPageResponse = {
   items: VersionHistory[]
@@ -129,7 +155,6 @@ export type WorkflowStartedResponse = {
   data: {
     id: string
     workflow_id: string
-    sequence_number: number
     created_at: number
   }
 }
@@ -174,6 +199,8 @@ export type FileResponse = {
   transfer_method: TransferMethod
   type: string
   url: string
+  upload_file_id: string
+  remote_url: string
 }
 
 export type NodeFinishedResponse = {
@@ -198,6 +225,27 @@ export type IterationNextResponse = {
 }
 
 export type IterationFinishedResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: NodeTracing
+}
+
+export type LoopStartedResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: NodeTracing
+}
+
+export type LoopNextResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: NodeTracing
+}
+
+export type LoopFinishedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
@@ -244,7 +292,6 @@ export type AgentLogResponse = {
 
 export type WorkflowRunHistory = {
   id: string
-  sequence_number: number
   version: string
   conversation_id?: string
   message_id?: string
@@ -290,7 +337,65 @@ export type ConversationVariableResponse = {
 }
 
 export type IterationDurationMap = Record<string, number>
+export type LoopDurationMap = Record<string, number>
+export type LoopVariableMap = Record<string, any>
 
 export type WorkflowConfigResponse = {
   parallel_depth_limit: number
+}
+
+export type PublishWorkflowParams = {
+  title: string
+  releaseNotes: string
+}
+
+export type UpdateWorkflowParams = {
+  workflowId: string
+  title: string
+  releaseNotes: string
+}
+
+export type PanelExposedType = {
+  singleRunParams: Pick<BeforeRunFormProps, 'forms'> & Partial<SpecialResultPanelProps>
+}
+
+export type PanelProps = {
+  getInputVars: (textList: string[]) => InputVar[]
+  toVarInputs: (variables: Variable[]) => InputVar[]
+  runInputData: Record<string, any>
+  runInputDataRef: MutableRefObject<Record<string, any>>
+  setRunInputData: (data: Record<string, any>) => void
+  runResult: any
+}
+
+export type NodeRunResult = NodeTracing
+
+// Var Inspect
+export enum VarInInspectType {
+  conversation = 'conversation',
+  environment = 'env',
+  node = 'node',
+  system = 'sys',
+}
+
+export type VarInInspect = {
+  id: string
+  type: VarInInspectType
+  name: string
+  description: string
+  selector: ValueSelector // can get node id from selector[0]
+  value_type: VarType
+  value: any
+  edited: boolean
+  visible: boolean
+}
+
+export type NodeWithVar = {
+  nodeId: string
+  nodePayload: CommonNodeType
+  nodeType: BlockEnum
+  title: string
+  vars: VarInInspect[]
+  isSingRunRunning?: boolean
+  isValueFetched?: boolean
 }

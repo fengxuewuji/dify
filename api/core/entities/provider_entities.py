@@ -146,6 +146,7 @@ class BasicProviderConfig(BaseModel):
         BOOLEAN = CommonParameterType.BOOLEAN.value
         APP_SELECTOR = CommonParameterType.APP_SELECTOR.value
         MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR.value
+        TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR.value
 
         @classmethod
         def value_of(cls, value: str) -> "ProviderConfig.Type":
@@ -175,7 +176,7 @@ class ProviderConfig(BasicProviderConfig):
 
     scope: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | None = None
     required: bool = False
-    default: Optional[Union[int, str]] = None
+    default: Optional[Union[int, str, float, bool]] = None
     options: Optional[list[Option]] = None
     label: Optional[I18nObject] = None
     help: Optional[I18nObject] = None

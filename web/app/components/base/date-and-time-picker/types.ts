@@ -11,7 +11,7 @@ export enum Period {
   PM = 'PM',
 }
 
-type TriggerProps = {
+export type TriggerProps = {
   value: Dayjs | undefined
   selectedDate: Dayjs | undefined
   isOpen: boolean
@@ -21,11 +21,15 @@ type TriggerProps = {
 
 export type DatePickerProps = {
   value: Dayjs | undefined
+  timezone?: string
   placeholder?: string
   needTimePicker?: boolean
   onChange: (date: Dayjs | undefined) => void
   onClear: () => void
+  triggerWrapClassName?: string
   renderTrigger?: (props: TriggerProps) => React.ReactNode
+  minuteFilter?: (minutes: string[]) => string[]
+  popupZIndexClassname?: string
 }
 
 export type DatePickerHeaderProps = {
@@ -44,12 +48,21 @@ export type DatePickerFooterProps = {
   handleConfirmDate: () => void
 }
 
+export type TriggerParams = {
+  isOpen: boolean
+  inputElem: React.ReactNode
+  onClick: (e: React.MouseEvent) => void
+}
 export type TimePickerProps = {
   value: Dayjs | undefined
+  timezone?: string
   placeholder?: string
   onChange: (date: Dayjs | undefined) => void
   onClear: () => void
-  renderTrigger?: () => React.ReactNode
+  renderTrigger?: (props: TriggerParams) => React.ReactNode
+  title?: string
+  minuteFilter?: (minutes: string[]) => string[]
+  popupClassName?: string
 }
 
 export type TimePickerFooterProps = {
@@ -77,6 +90,7 @@ export type CalendarItemProps = {
 
 export type TimeOptionsProps = {
   selectedTime: Dayjs | undefined
+  minuteFilter?: (minutes: string[]) => string[]
   handleSelectHour: (hour: string) => void
   handleSelectMinute: (minute: string) => void
   handleSelectPeriod: (period: Period) => void

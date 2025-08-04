@@ -71,6 +71,7 @@ const config = {
       boxShadow: {
         'xs': '0px 1px 2px 0px rgba(16, 24, 40, 0.05)',
         'sm': '0px 1px 2px 0px rgba(16, 24, 40, 0.06), 0px 1px 3px 0px rgba(16, 24, 40, 0.10)',
+        'sm-no-bottom': '0px -1px 2px 0px rgba(16, 24, 40, 0.06), 0px -1px 3px 0px rgba(16, 24, 40, 0.10)',
         'md': '0px 2px 4px -2px rgba(16, 24, 40, 0.06), 0px 4px 8px -2px rgba(16, 24, 40, 0.10)',
         'lg': '0px 4px 6px -2px rgba(16, 24, 40, 0.03), 0px 12px 16px -4px rgba(16, 24, 40, 0.08)',
         'xl': '0px 8px 8px -4px rgba(16, 24, 40, 0.03), 0px 20px 24px -4px rgba(16, 24, 40, 0.08)',
@@ -89,11 +90,16 @@ const config = {
       fontSize: {
         '2xs': '0.625rem',
       },
+      backgroundColor: {
+        'background-gradient-bg-fill-chat-bubble-bg-3': 'var(--color-background-gradient-bg-fill-chat-bubble-bg-3)',
+      },
       backgroundImage: {
         'chatbot-bg': 'var(--color-chatbot-bg)',
         'chat-bubble-bg': 'var(--color-chat-bubble-bg)',
         'chat-input-mask': 'var(--color-chat-input-mask)',
         'workflow-process-bg': 'var(--color-workflow-process-bg)',
+        'workflow-run-failed-bg': 'var(--color-workflow-run-failed-bg)',
+        'workflow-batch-failed-bg': 'var(--color-workflow-batch-failed-bg)',
         'mask-top2bottom-gray-50-to-transparent': 'var(--mask-top2bottom-gray-50-to-transparent)',
         'marketplace-divider-bg': 'var(--color-marketplace-divider-bg)',
         'marketplace-plugin-empty': 'var(--color-marketplace-plugin-empty)',
@@ -111,6 +117,13 @@ const config = {
         'dataset-option-card-purple-gradient': 'var(--color-dataset-option-card-purple-gradient)',
         'dataset-option-card-orange-gradient': 'var(--color-dataset-option-card-orange-gradient)',
         'dataset-chunk-list-mask-bg': 'var(--color-dataset-chunk-list-mask-bg)',
+        'line-divider-bg': 'var(--color-line-divider-bg)',
+        'dataset-warning-message-bg': 'var(--color-dataset-warning-message-bg)',
+        'price-premium-badge-background': 'var(--color-premium-badge-background)',
+        'premium-yearly-tip-text-background': 'var(--color-premium-yearly-tip-text-background)',
+        'price-premium-text-background': 'var(--color-premium-text-background)',
+        'price-enterprise-background': 'var(--color-price-enterprise-background)',
+        'grid-mask-background': 'var(--color-grid-mask-background)',
       },
       animation: {
         'spin-slow': 'spin 2s linear infinite',

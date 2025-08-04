@@ -17,7 +17,7 @@ import {
   getFormattedPlugin,
   getMarketplaceCollectionsAndPlugins,
 } from './utils'
-import i18n from '@/i18n/i18next-config'
+import i18n from '@/i18n-config/i18next-config'
 import {
   useMutationPluginsFromMarketplace,
 } from '@/service/use-plugins'
@@ -89,7 +89,7 @@ export const useMarketplacePlugins = () => {
     handleUpdatePlugins(pluginsSearchParams)
   }, [handleUpdatePlugins])
 
-  const { run: queryPluginsWithDebounced } = useDebounceFn((pluginsSearchParams: PluginsSearchParams) => {
+  const { run: queryPluginsWithDebounced, cancel: cancelQueryPluginsWithDebounced } = useDebounceFn((pluginsSearchParams: PluginsSearchParams) => {
     handleUpdatePlugins(pluginsSearchParams)
   }, {
     wait: 500,
@@ -101,6 +101,7 @@ export const useMarketplacePlugins = () => {
     resetPlugins,
     queryPlugins,
     queryPluginsWithDebounced,
+    cancelQueryPluginsWithDebounced,
     isLoading: isPending,
   }
 }
@@ -108,6 +109,7 @@ export const useMarketplacePlugins = () => {
 export const useMixedTranslation = (localeFromOuter?: string) => {
   let t = useTranslation().t
 
+  // !localeFromOuter only support zh-Hans and en-US for now
   if (localeFromOuter)
     t = i18n.getFixedT(localeFromOuter)
 
@@ -120,8 +122,6 @@ export const useMarketplaceContainerScroll = (
   callback: () => void,
   scrollContainerId = 'marketplace-container',
 ) => {
-  const container = document.getElementById(scrollContainerId)
-
   const handleScroll = useCallback((e: Event) => {
     const target = e.target as HTMLDivElement
     const {
@@ -134,6 +134,7 @@ export const useMarketplaceContainerScroll = (
   }, [callback])
 
   useEffect(() => {
+    const container = document.getElementById(scrollContainerId)
     if (container)
       container.addEventListener('scroll', handleScroll)
 
@@ -141,7 +142,7 @@ export const useMarketplaceContainerScroll = (
       if (container)
         container.removeEventListener('scroll', handleScroll)
     }
-  }, [container, handleScroll])
+  }, [handleScroll])
 }
 
 export const useSearchBoxAutoAnimate = (searchBoxAutoAnimate?: boolean) => {
