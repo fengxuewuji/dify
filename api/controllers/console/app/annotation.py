@@ -100,7 +100,7 @@ class AnnotationReplyActionStatusApi(Resource):
         return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200
 
 
-class AnnotationListApi(Resource):
+class AnnotationApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -123,22 +123,6 @@ class AnnotationListApi(Resource):
         }
         return response, 200
 
-
-class AnnotationExportApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, app_id):
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        app_id = str(app_id)
-        annotation_list = AppAnnotationService.export_annotation_list_by_app_id(app_id)
-        response = {"data": marshal(annotation_list, annotation_fields)}
-        return response, 200
-
-
-class AnnotationCreateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -155,6 +139,48 @@ class AnnotationCreateApi(Resource):
         args = parser.parse_args()
         annotation = AppAnnotationService.insert_app_annotation_directly(args, app_id)
         return annotation
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def delete(self, app_id):
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        app_id = str(app_id)
+
+        # Use request.args.getlist to get annotation_ids array directly
+        annotation_ids = request.args.getlist("annotation_id")
+
+        # If annotation_ids are provided, handle batch deletion
+        if annotation_ids:
+            # Check if any annotation_ids contain empty strings or invalid values
+            if not all(annotation_id.strip() for annotation_id in annotation_ids if annotation_id):
+                return {
+                    "code": "bad_request",
+                    "message": "annotation_ids are required if the parameter is provided.",
+                }, 400
+
+            result = AppAnnotationService.delete_app_annotations_in_batch(app_id, annotation_ids)
+            return result, 204
+        # If no annotation_ids are provided, handle clearing all annotations
+        else:
+            AppAnnotationService.clear_all_annotations(app_id)
+            return {"result": "success"}, 204
+
+
+class AnnotationExportApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, app_id):
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        app_id = str(app_id)
+        annotation_list = AppAnnotationService.export_annotation_list_by_app_id(app_id)
+        response = {"data": marshal(annotation_list, annotation_fields)}
+        return response, 200
 
 
 class AnnotationUpdateDeleteApi(Resource):
@@ -265,7 +291,7 @@ api.add_resource(AnnotationReplyActionApi, "/apps/<uuid:app_id>/annotation-reply
 api.add_resource(
     AnnotationReplyActionStatusApi, "/apps/<uuid:app_id>/annotation-reply/<string:action>/status/<uuid:job_id>"
 )
-api.add_resource(AnnotationListApi, "/apps/<uuid:app_id>/annotations")
+api.add_resource(AnnotationApi, "/apps/<uuid:app_id>/annotations")
 api.add_resource(AnnotationExportApi, "/apps/<uuid:app_id>/annotations/export")
 api.add_resource(AnnotationUpdateDeleteApi, "/apps/<uuid:app_id>/annotations/<uuid:annotation_id>")
 api.add_resource(AnnotationBatchImportApi, "/apps/<uuid:app_id>/annotations/batch-import")
