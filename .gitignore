@@ -215,3 +215,6 @@ mise.toml
 # AI Assistant
 .roo/
 api/.env.backup
+docker/volumes-*.tgz
+docker/*.tgz
+*.tgz
