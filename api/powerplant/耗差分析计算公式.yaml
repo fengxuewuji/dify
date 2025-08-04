@@ -1,0 +1,43 @@
+'锅炉效率耗差(g/kWh)':
+  'tag_name': 'JCYY:U4_MH_GLXL'
+  'unit': 'g/kWh'
+  '计算公式': '锅炉计算效率 - 锅炉设计效率'
+  '子参数': {
+        '锅炉计算效率': 'JCYY:U4_MH_GLXL',
+        '锅炉设计效率': 'JCYY:U4_MH_GLSDXL'
+    }
+'汽轮机基础热耗率耗差(g/kWh)':
+  'tag_name': 'JCYY:U4_MH_QLJJRHLL'
+  'unit': 'g/kWh'
+  '计算公式': '汽轮机基础热耗率 - 汽轮机设计热耗率'
+  '子参数': {
+        '汽轮机基础热耗率': 'JCYY:U4_MH_QLJJRHLL',
+        '汽轮机设计热耗率': 'JCYY:U4_MH_QLJJSRHLL'
+    }
+'汽轮机效率耗差(g/kWh)':
+        'JCYY:U4_MH_GTF': '高调阀运行方式耗差(g/kWh)'
+        'JCYY:U4_MH_ZZQWD': '主汽温度耗差(g/kWh)'
+        'JCYY:U4_MH_ZRZQWD': '再热汽温度耗差(g/kWh)'
+        'JCYY:U4_MH_GRJWS': '过热减温水流量耗差(g/kWh)'
+        'JCYY:U4_MH_ZRJWS': '再热减温水流量耗差(g/kWh)'
+        'JCYY:U4_MH_YXBY': '运行背压耗差(g/kWh)'
+        'JCYY:U4_MH_1GJSDC': '1号高加上端差耗差(g/kWh)'
+        'JCYY:U4_MH_1GJXDC': '1号高加下端差耗差(g/kWh)'
+        'JCYY:U4_MH_2GJSDC': '2号高加上端差耗差(g/kWh)'
+        'JCYY:U4_MH_2GJXDC': '2号高加下端差耗差(g/kWh)'
+        'JCYY:U4_MH_3GJSDC': '3号高加上端差耗差(g/kWh)'
+        'JCYY:U4_MH_3GJXDC': '3号高加下端差耗差(g/kWh)'
+        'JCYY:U4_MH_5DJSDC': '5号低加上端差耗差(g/kWh)'
+        'JCYY:U4_MH_5DJXDC': '5号低加下端差耗差(g/kWh)'
+        'JCYY:U4_MH_6DJSDC': '6号低加上端差耗差(g/kWh)'
+        'JCYY:U4_MH_6DJXDC': '6号低加下端差耗差(g/kWh)'
+        'JCYY:U4_MH_7DJSDC': '7号低加上端差耗差(g/kWh)'
+        'JCYY:U4_MH_7DJXDC': '7号低加下端差耗差(g/kWh)'
+        'inner_leakage': '热力系统内漏耗差(g/kWh)'
+        'JCYY:U4_MH_FDBSL': '发电补水率耗差(g/kWh)'
+        'JCYY:U4_MH_GYGQGRB': '工业供汽供热比耗差(g/kWh)'
+        'JCYY:U4_MH_CNGRB': '采暖供热比耗差(g/kWh)'
+        'JCYY:U4_MH_NFQTY': '暖风器投运耗差(g/kWh)'
+        'JCYY:U4_MH_LTGJLSS': '连通管蝶阀节流损失耗差(g/kWh)'
+        'JCYY:U4_MH_CLXS': '出力系数耗差(g/kWh)'
+        'JCYY:U4_MH_FGC': '峰谷差耗差(g/kWh)'

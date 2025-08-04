@@ -1,0 +1,117 @@
+锅炉效率: 
+  tag_name: JCYY:U4_BOILER_EFF
+  unit: '%'
+锅炉q2损失: 
+  tag_name: JCYY:U4_BOILER_Q2
+  unit: '%'
+锅炉q3损失: 
+  tag_name: JCYY:U4_BOILER_Q3
+  unit: '%'
+锅炉q4损失: 
+  tag_name: JCYY:U4_BOILER_Q4
+  unit: '%'
+锅炉q5损失: 
+  tag_name: JCYY:U4_BOILER_Q5
+  unit: '%'
+锅炉q6损失: 
+  tag_name: JCYY:U4_BOILER_Q_OTHER
+  unit: '%'
+工业供热比: 
+  tag_name: JCYY:U4_GYGRB
+  unit: '%'
+采暖供热比: 
+  tag_name: JCYY:U4_CNGRB
+  unit: '%'
+汽轮机高压缸效率: 
+  tag_name: JCYY:U4_GYGXL
+  unit: '%'
+发电煤耗率: 
+  tag_name: JCYY:U4_MH_FDMH
+  unit: 'kg/kWh'
+供电煤耗率: 
+  tag_name: JCYY:U4_MH_GDMH
+  unit: 'kg/kWh'
+锅炉效率耗差:
+  tag_name: JCYY:U4_MH_GLXL
+  unit: 'g/kWh'
+汽轮机基础热耗率耗差:
+  tag_name: JCYY:U4_MH_JCRH
+  unit: 'g/kWh'
+高调阀运行方式耗差:
+  tag_name: JCYY:U4_MH_GTF
+  unit: 'g/kWh'
+主汽温度耗差:
+  tag_name: JCYY:U4_MH_ZZQWD
+  unit: 'g/kWh'
+再热汽温度耗差:
+  tag_name: JCYY:U4_MH_ZRZQWD
+  unit: 'g/kWh'
+过热减温水流量耗差:
+  tag_name: JCYY:U4_MH_GRJWS
+  unit: 'g/kWh'
+再热减温水流量耗差:
+  tag_name: JCYY:U4_MH_ZRJWS
+  unit: 'g/kWh'
+运行背压耗差:
+  tag_name: JCYY:U4_MH_YXBY
+  unit: 'g/kWh'
+1号高加上端差耗差:
+  tag_name: JCYY:U4_MH_1GJSDC
+  unit: 'g/kWh'
+1号高加下端差耗差:
+  tag_name: JCYY:U4_MH_1GJXDC
+  unit: 'g/kWh'
+2号高加上端差耗差:
+  tag_name: JCYY:U4_MH_2GJSDC
+  unit: 'g/kWh'
+2号高加下端差耗差:
+  tag_name: JCYY:U4_MH_2GJXDC
+  unit: 'g/kWh'
+3号高加上端差耗差:
+  tag_name: JCYY:U4_MH_3GJSDC
+  unit: 'g/kWh'
+3号高加下端差耗差:
+  tag_name: JCYY:U4_MH_3GJXDC
+  unit: 'g/kWh'
+5号低加上端差耗差:
+  tag_name: JCYY:U4_MH_5DJSDC
+  unit: 'g/kWh'
+5号低加下端差耗差:
+  tag_name: JCYY:U4_MH_5DJXDC
+  unit: 'g/kWh'
+6号低加上端差耗差:
+  tag_name: JCYY:U4_MH_6DJSDC
+  unit: 'g/kWh'
+6号低加下端差耗差:
+  tag_name: JCYY:U4_MH_6DJXDC
+  unit: 'g/kWh'
+7号低加上端差耗差:
+  tag_name: JCYY:U4_MH_7DJSDC
+  unit: 'g/kWh'
+7号低加下端差耗差:
+  tag_name: JCYY:U4_MH_7DJXDC
+  unit: 'g/kWh'
+热力系统内漏耗差:
+  tag_name: inner_leakage
+  unit: 'g/kWh'
+发电补水率耗差:
+  tag_name: JCYY:U4_MH_FDBSL
+  unit: 'g/kWh'
+工业供汽供热比耗差:
+  tag_name: JCYY:U4_MH_GYGQGRB
+  unit: 'g/kWh'
+采暖供热比耗差:
+  tag_name: JCYY:U4_MH_CNGRB
+  unit: 'g/kWh'
+暖风器投运耗差:
+  tag_name: JCYY:U4_MH_NFQTY
+  unit: 'g/kWh'
+连通管蝶阀节流损失耗差:
+  tag_name: JCYY:U4_MH_LTGJLSS
+  unit: 'g/kWh'
+出力系数耗差:
+  tag_name: JCYY:U4_MH_CLXS
+  unit: 'g/kWh'
+峰谷差耗差:
+  tag_name: JCYY:U4_MH_FGC
+  unit: 'g/kWh'

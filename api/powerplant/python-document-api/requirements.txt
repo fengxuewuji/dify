@@ -1,0 +1,5 @@
+Flask
+python-docx
+reportlab
+Jinja2
+PyPDF2
