@@ -89,21 +89,28 @@ class WordGenerator(DocumentGenerator):
         }
         align = align_map.get(options.get('align', 'LEFT').upper(), WD_ALIGN_PARAGRAPH.LEFT)
         
-        # 添加正文内容
-        for line in content.split('\\n'):
-            if line.strip():
-                p = doc.add_paragraph()
-                p.paragraph_format.line_spacing = line_spacing
-                p.paragraph_format.space_before = Pt(options.get('spaceBefore', 0))
-                p.paragraph_format.space_after = Pt(options.get('spaceAfter', 6))
-                p.paragraph_format.alignment = align
-                
-                run = p.add_run(line)
-                run.font.name = body_font
-                run.font.size = Pt(body_size)
-                run._element.rPr.rFonts.set(qn('w:eastAsia'), body_font)
-            else:
-                doc.add_paragraph()
+        # 添加正文内容 - 支持段落级格式控制
+        paragraphs_config = options.get('paragraphs', [])
+        
+        if paragraphs_config:
+            # 使用段落配置模式
+            self._add_configured_paragraphs(doc, paragraphs_config, body_font, body_size)
+        else:
+            # 使用传统模式
+            for line in content.split('\\n'):
+                if line.strip():
+                    p = doc.add_paragraph()
+                    p.paragraph_format.line_spacing = line_spacing
+                    p.paragraph_format.space_before = Pt(options.get('spaceBefore', 0))
+                    p.paragraph_format.space_after = Pt(options.get('spaceAfter', 6))
+                    p.paragraph_format.alignment = align
+                    
+                    run = p.add_run(line)
+                    run.font.name = body_font
+                    run.font.size = Pt(body_size)
+                    run._element.rPr.rFonts.set(qn('w:eastAsia'), body_font)
+                else:
+                    doc.add_paragraph()
         
         # 表格设置
         table_conf = options.get('table')
@@ -136,6 +143,87 @@ class WordGenerator(DocumentGenerator):
         file_stream.seek(0)
         
         return file_stream
+    
+    def _add_configured_paragraphs(self, doc: Document, paragraphs_config: List[Dict], 
+                                 default_font: str, default_size: int):
+        """添加配置的段落"""
+        from docx.enum.dml import MSO_THEME_COLOR_INDEX
+        
+        for para_config in paragraphs_config:
+            content = para_config.get('content', '')
+            if not content.strip():
+                doc.add_paragraph()  # 空段落
+                continue
+                
+            # 创建段落
+            if para_config.get('style') == 'heading':
+                # 标题段落
+                level = para_config.get('level', 1)
+                p = doc.add_heading(content, level)
+            elif para_config.get('numbered'):
+                # 编号段落
+                p = doc.add_paragraph(content, style='List Number')
+            elif para_config.get('bulleted'):
+                # 项目符号段落
+                p = doc.add_paragraph(content, style='List Bullet')
+            else:
+                # 普通段落
+                p = doc.add_paragraph()
+                run = p.add_run(content)
+                
+                # 字体设置
+                font_name = para_config.get('font', default_font)
+                font_size = para_config.get('fontSize', default_size)
+                run.font.name = font_name
+                run.font.size = Pt(font_size)
+                run._element.rPr.rFonts.set(qn('w:eastAsia'), font_name)
+                
+                # 字体样式
+                if para_config.get('bold'):
+                    run.font.bold = True
+                if para_config.get('italic'):
+                    run.font.italic = True
+                if para_config.get('underline'):
+                    run.font.underline = True
+                
+                # 字体颜色
+                color = para_config.get('color')
+                if color:
+                    if isinstance(color, str) and color.startswith('#'):
+                        # 十六进制颜色
+                        from docx.shared import RGBColor
+                        rgb = tuple(int(color[i:i+2], 16) for i in (1, 3, 5))
+                        run.font.color.rgb = RGBColor(*rgb)
+            
+            # 段落格式设置
+            align_map = {
+                'LEFT': WD_ALIGN_PARAGRAPH.LEFT,
+                'CENTER': WD_ALIGN_PARAGRAPH.CENTER,
+                'RIGHT': WD_ALIGN_PARAGRAPH.RIGHT,
+                'JUSTIFY': WD_ALIGN_PARAGRAPH.JUSTIFY
+            }
+            
+            if para_config.get('align'):
+                p.paragraph_format.alignment = align_map.get(
+                    para_config['align'].upper(), WD_ALIGN_PARAGRAPH.LEFT
+                )
+            
+            if para_config.get('lineSpacing'):
+                p.paragraph_format.line_spacing = para_config['lineSpacing']
+                
+            if para_config.get('spaceBefore'):
+                p.paragraph_format.space_before = Pt(para_config['spaceBefore'])
+                
+            if para_config.get('spaceAfter'):
+                p.paragraph_format.space_after = Pt(para_config['spaceAfter'])
+                
+            # 缩进设置
+            if para_config.get('leftIndent'):
+                p.paragraph_format.left_indent = Cm(para_config['leftIndent'])
+            if para_config.get('rightIndent'):
+                p.paragraph_format.right_indent = Cm(para_config['rightIndent'])
+            if para_config.get('firstLineIndent'):
+                p.paragraph_format.first_line_indent = Cm(para_config['firstLineIndent'])
 
 
 class PDFGenerator(DocumentGenerator):
@@ -206,12 +294,19 @@ class PDFGenerator(DocumentGenerator):
         story.append(Paragraph(title, title_style))
         story.append(Spacer(1, 12))
         
-        # 添加正文内容
-        for line in content.split('\\n'):
-            if line.strip():
-                story.append(Paragraph(line, body_style))
-            else:
-                story.append(Spacer(1, 6))
+        # 添加正文内容 - 支持段落级格式控制
+        paragraphs_config = options.get('paragraphs', [])
+        
+        if paragraphs_config:
+            # 使用段落配置模式
+            self._add_configured_pdf_content(story, paragraphs_config, styles, font_name)
+        else:
+            # 使用传统模式
+            for line in content.split('\\n'):
+                if line.strip():
+                    story.append(Paragraph(line, body_style))
+                else:
+                    story.append(Spacer(1, 6))
         
         # 添加表格
         table_conf = options.get('table')
@@ -260,3 +355,122 @@ class PDFGenerator(DocumentGenerator):
         
         buffer.seek(0)
         return buffer
+    
+    def _add_configured_pdf_content(self, story: List, paragraphs_config: List[Dict], 
+                                  styles, font_name: str):
+        """添加配置的PDF段落"""
+        numbered_counter = 1
+        
+        for para_config in paragraphs_config:
+            content = para_config.get('content', '')
+            if not content.strip():
+                story.append(Spacer(1, 6))
+                continue
+            
+            # 创建段落样式
+            style_name = f"Custom_{len(story)}"
+            
+            # 对齐方式
+            align_map = {
+                'LEFT': TA_LEFT, 'CENTER': TA_CENTER,
+                'RIGHT': TA_RIGHT, 'JUSTIFY': TA_JUSTIFY
+            }
+            alignment = align_map.get(para_config.get('align', 'LEFT').upper(), TA_LEFT)
+            
+            # 字体和大小
+            para_font = para_config.get('font', font_name)
+            font_size = para_config.get('fontSize', 12)
+            line_height = para_config.get('leading', font_size * 1.2)
+            
+            # 创建自定义样式
+            if para_config.get('style') == 'heading':
+                # 标题样式
+                level = para_config.get('level', 1)
+                base_style = styles['Heading1'] if level == 1 else styles['Heading2']
+                custom_style = ParagraphStyle(
+                    style_name,
+                    parent=base_style,
+                    fontName=para_font,
+                    fontSize=font_size + (6 - level * 2),  # 标题字号递减
+                    alignment=alignment,
+                    spaceBefore=para_config.get('spaceBefore', 12),
+                    spaceAfter=para_config.get('spaceAfter', 6),
+                    leading=line_height
+                )
+                story.append(Paragraph(content, custom_style))
+                
+            elif para_config.get('numbered'):
+                # 编号段落
+                numbered_content = f"{numbered_counter}. {content}"
+                numbered_counter += 1
+                
+                custom_style = ParagraphStyle(
+                    style_name,
+                    parent=styles['BodyText'],
+                    fontName=para_font,
+                    fontSize=font_size,
+                    alignment=alignment,
+                    spaceBefore=para_config.get('spaceBefore', 3),
+                    spaceAfter=para_config.get('spaceAfter', 3),
+                    leftIndent=para_config.get('leftIndent', 20),
+                    leading=line_height
+                )
+                story.append(Paragraph(numbered_content, custom_style))
+                
+            elif para_config.get('bulleted'):
+                # 项目符号段落
+                bullet_content = f"• {content}"
+                
+                custom_style = ParagraphStyle(
+                    style_name,
+                    parent=styles['BodyText'],
+                    fontName=para_font,
+                    fontSize=font_size,
+                    alignment=alignment,
+                    spaceBefore=para_config.get('spaceBefore', 3),
+                    spaceAfter=para_config.get('spaceAfter', 3),
+                    leftIndent=para_config.get('leftIndent', 20),
+                    leading=line_height
+                )
+                story.append(Paragraph(bullet_content, custom_style))
+                
+            else:
+                # 普通段落
+                custom_style = ParagraphStyle(
+                    style_name,
+                    parent=styles['BodyText'],
+                    fontName=para_font,
+                    fontSize=font_size,
+                    alignment=alignment,
+                    spaceBefore=para_config.get('spaceBefore', 0),
+                    spaceAfter=para_config.get('spaceAfter', 6),
+                    leftIndent=para_config.get('leftIndent', 0),
+                    rightIndent=para_config.get('rightIndent', 0),
+                    firstLineIndent=para_config.get('firstLineIndent', 0),
+                    leading=line_height
+                )
+                
+                # 处理富文本格式
+                if any(para_config.get(attr) for attr in ['bold', 'italic', 'underline', 'color']):
+                    # 构建富文本内容
+                    formatted_content = self._format_pdf_text(content, para_config)
+                    story.append(Paragraph(formatted_content, custom_style))
+                else:
+                    story.append(Paragraph(content, custom_style))
+    
+    def _format_pdf_text(self, content: str, para_config: Dict) -> str:
+        """格式化PDF文本（支持粗体、斜体等）"""
+        formatted = content
+        
+        if para_config.get('bold'):
+            formatted = f"<b>{formatted}</b>"
+        if para_config.get('italic'):
+            formatted = f"<i>{formatted}</i>"
+        if para_config.get('underline'):
+            formatted = f"<u>{formatted}</u>"
+        
+        color = para_config.get('color')
+        if color and isinstance(color, str) and color.startswith('#'):
+            formatted = f'<font color="{color}">{formatted}</font>'
+            
+        return formatted
