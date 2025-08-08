@@ -106,7 +106,7 @@ python main.py
 1. 在 `src/services/` 中添加业务逻辑
 2. 在 `src/controllers/` 中添加路由处理
 3. 在 `app_factory.py` 中注册蓝图
-
+r
 ### 修改配置
 1. 修改 `src/config/constants.py` 中的常量
 2. 修改 `src/config/settings.py` 中的配置类
